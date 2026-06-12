@@ -1,0 +1,16 @@
+.DS_Store
+
+# Local/editor state
+.claude/
+.idea/
+.vscode/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Generated/dependency folders
+node_modules/
+dist/
+coverage/

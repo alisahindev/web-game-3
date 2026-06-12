@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GRUKK: Kemik Çağı</title>
+<meta name="description" content="GRUKK: Kemik Çağı — taş devri arenasında geçen rogue-lite survival web oyunu. Kaç, evrimleş, build kur, hayatta kal.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🦴</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ════════ OYUN EKRANI ════════ -->
+<div id="game-wrap">
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="hud-top">
+      <div id="xpbar-wrap"><div id="xpbar"></div></div>
+      <div id="hud-top-row">
+        <div id="hud-left">
+          <div id="lvl-badge">Sv.1</div>
+          <div id="hpbar-wrap"><div id="hpbar"></div><span id="hp-text">100</span></div>
+        </div>
+        <div id="hud-timer">0:00</div>
+        <div id="hud-right">
+          <span id="hud-kills">☠ 0</span>
+          <span id="hud-coins">◉ 0</span>
+          <button id="btn-pause" aria-label="Duraklat">❚❚</button>
+        </div>
+      </div>
+      <div id="bossbar-wrap" class="hidden">
+        <div id="bossbar-name">BOSS</div>
+        <div id="bossbar-outer"><div id="bossbar"></div></div>
+      </div>
+    </div>
+    <div id="hud-weapons"></div>
+    <div id="hint-controls">WASD / Ok tuşları ile hareket et · Saldırı otomatik</div>
+    <div id="boss-banner" class="hidden"></div>
+    <div id="vignette"></div>
+  </div>
+
+  <div id="joystick" class="hidden"><div id="joy-base"><div id="joy-knob"></div></div></div>
+</div>
+
+<!-- ════════ LOADING ════════ -->
+<div id="screen-loading" class="screen">
+  <div class="menu-title small">GRUKK</div>
+  <div class="loading-bar-wrap"><div id="loading-bar"></div></div>
+  <div id="loading-tip" class="muted">Kemikler ısınıyor...</div>
+</div>
+
+<!-- ════════ ANA MENÜ ════════ -->
+<div id="screen-menu" class="screen hidden">
+  <div class="menu-title">GRUKK<span class="subtitle">KEMİK ÇAĞI</span></div>
+  <div class="menu-stats">
+    <span>◉ <b id="menu-coins">0</b></span>
+    <span>🏆 <b id="menu-achpts">0</b></span>
+    <span>☠ <b id="menu-kills">0</b></span>
+  </div>
+  <div class="menu-btns">
+    <button class="btn big primary" data-go="chars">⛏ AV'A ÇIK</button>
+    <button class="btn" data-go="meta">🌳 Atalar Ağacı</button>
+    <button class="btn" data-go="quests">📜 Görevler <span id="quest-dot" class="dot hidden"></span></button>
+    <button class="btn" data-go="collection">📖 Koleksiyon</button>
+    <button class="btn" data-go="settings">⚙ Ayarlar</button>
+    <button class="btn" data-go="howto">❓ Nasıl Oynanır</button>
+  </div>
+  <div class="menu-footer muted">v1.0 · tamamen özgün bir kemik çağı hikâyesi</div>
+</div>
+
+<!-- ════════ KARAKTER SEÇİMİ ════════ -->
+<div id="screen-chars" class="screen hidden">
+  <h2>Avcını Seç</h2>
+  <div id="char-list" class="card-row"></div>
+  <div class="row-select">
+    <div class="select-group"><label>Bölge</label><div id="zone-list" class="chip-row"></div></div>
+    <div class="select-group"><label>Av Süresi</label><div id="mode-list" class="chip-row"></div></div>
+    <div class="select-group" id="hard-group"><label>Zorluk</label><div id="hard-list" class="chip-row"></div></div>
+  </div>
+  <div class="screen-btns">
+    <button class="btn" data-go="menu">← Geri</button>
+    <button class="btn big primary" id="btn-start-run">AV BAŞLASIN</button>
+  </div>
+</div>
+
+<!-- ════════ ATALAR AĞACI ════════ -->
+<div id="screen-meta" class="screen hidden">
+  <h2>🌳 Atalar Ağacı</h2>
+  <p class="muted">Coin harca, kalıcı güçlen. Atalar seninle.</p>
+  <div class="menu-stats"><span>◉ <b id="meta-coins">0</b></span></div>
+  <div id="meta-list" class="meta-grid"></div>
+  <div class="screen-btns"><button class="btn" data-go="menu">← Geri</button></div>
+</div>
+
+<!-- ════════ GÖREVLER ════════ -->
+<div id="screen-quests" class="screen hidden">
+  <h2>📜 Görevler</h2>
+  <h3>Günlük Av Emirleri</h3>
+  <div id="daily-list" class="quest-list"></div>
+  <h3>Haftalık Büyük Av</h3>
+  <div id="weekly-list" class="quest-list"></div>
+  <div class="screen-btns"><button class="btn" data-go="menu">← Geri</button></div>
+</div>
+
+<!-- ════════ KOLEKSİYON ════════ -->
+<div id="screen-collection" class="screen hidden">
+  <h2>📖 Koleksiyon Kitabı</h2>
+  <div class="chip-row" id="coll-tabs">
+    <button class="chip active" data-tab="weapons">Silahlar</button>
+    <button class="chip" data-tab="enemies">Yaratıklar</button>
+    <button class="chip" data-tab="achievements">Başarımlar</button>
+  </div>
+  <div id="coll-body" class="coll-grid"></div>
+  <div class="screen-btns"><button class="btn" data-go="menu">← Geri</button></div>
+</div>
+
+<!-- ════════ AYARLAR ════════ -->
+<div id="screen-settings" class="screen hidden">
+  <h2>⚙ Ayarlar</h2>
+  <div class="settings-list">
+    <div class="setting-row"><label>Ses Efektleri</label><input type="range" id="set-sfx" min="0" max="100" value="80"></div>
+    <div class="setting-row"><label>Müzik</label><input type="range" id="set-music" min="0" max="100" value="55"></div>
+    <div class="setting-row"><label>Ekran Sarsıntısı</label><button class="toggle" id="set-shake">Açık</button></div>
+    <div class="setting-row"><label>Efekt Yoğunluğu</label><button class="toggle" id="set-fx">Tam</button></div>
+    <div class="setting-row"><label>Hasar Sayıları</label><button class="toggle" id="set-dmgnum">Açık</button></div>
+  </div>
+  <div class="screen-btns">
+    <button class="btn danger" id="btn-wipe">Kaydı Sıfırla</button>
+    <button class="btn" data-go="menu">← Geri</button>
+  </div>
+</div>
+
+<!-- ════════ NASIL OYNANIR ════════ -->
+<div id="screen-howto" class="screen hidden">
+  <h2>❓ Nasıl Oynanır</h2>
+  <div class="howto-list">
+    <p>🦶 <b>Hareket:</b> WASD / ok tuşları. Mobilde ekrana bas-sürükle (sanal joystick).</p>
+    <p>⚔ <b>Saldırı:</b> Tamamen otomatik. Nişan alma yok — konumlanma her şeydir.</p>
+    <p>💎 <b>XP Taşları:</b> Ölen yaratıklar XP taşı düşürür. Topla, level atla.</p>
+    <p>🃏 <b>Level Up:</b> 3 karttan birini seç. Silah + doğru pasif = <b>EVRİM</b>.</p>
+    <p>👹 <b>Boss'lar:</b> %30, %60 ve %80'de mini boss; sürenin sonunda Fosil Tiran. Kırmızı işaretli alanlardan kaç!</p>
+    <p>🎁 <b>Sandıklar:</b> Mini boss'lar coin + bedava upgrade kartı düşürür.</p>
+    <p>🍖 <b>Pickup'lar:</b> Et can yeniler; Manyetik Kemik tüm XP'yi çeker; Patlama Totemi ekranı temizler; Zaman Fosili düşmanları yavaşlatır.</p>
+    <p>🌳 <b>Ölüm sonu değil:</b> Coin'lerle Atalar Ağacı'ndan kalıcı güçlen, yeni karakterler aç.</p>
+    <p>⏸ <b>Duraklat:</b> P veya Esc.</p>
+  </div>
+  <div class="screen-btns"><button class="btn" data-go="menu">← Geri</button></div>
+</div>
+
+<!-- ════════ LEVEL UP OVERLAY ════════ -->
+<div id="overlay-levelup" class="overlay hidden">
+  <div class="overlay-inner">
+    <h2 id="levelup-title">SEVİYE ATLADIN!</h2>
+    <div id="levelup-cards" class="card-row"></div>
+    <button class="btn hidden" id="btn-reroll">🎲 Yeniden Çevir (<span id="reroll-count">0</span>)</button>
+  </div>
+</div>
+
+<!-- ════════ PAUSE OVERLAY ════════ -->
+<div id="overlay-pause" class="overlay hidden">
+  <div class="overlay-inner">
+    <h2>MOLA</h2>
+    <p class="muted" id="pause-stats"></p>
+    <div class="menu-btns">
+      <button class="btn big primary" id="btn-resume">▶ Devam Et</button>
+      <button class="btn" id="btn-abandon">🏳 Avı Bırak</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ RUN SONU OVERLAY ════════ -->
+<div id="overlay-runend" class="overlay hidden">
+  <div class="overlay-inner wide">
+    <h2 id="runend-title">Av bitti.</h2>
+    <p id="runend-sub" class="muted"></p>
+    <div id="runend-stats" class="stat-grid"></div>
+    <div id="runend-build"></div>
+    <div id="runend-unlocks"></div>
+    <div class="menu-btns row">
+      <button class="btn big primary" id="btn-retry">⛏ Tekrar Av'a Çık</button>
+      <button class="btn big" id="btn-tomenu">🏠 Mağaraya Dön</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="js/data.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
