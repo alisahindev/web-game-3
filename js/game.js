@@ -41,30 +41,91 @@ const Game = {
     const jdom = document.getElementById('joystick');
     const jbase = document.getElementById('joy-base');
     const jknob = document.getElementById('joy-knob');
-    this.canvas.addEventListener('pointerdown', e => {
-      if (e.pointerType === 'mouse' || this.joy.active) return;
-      if (this.state !== 'playing' && this.state !== 'dying') return;
-      this.joy.active = true; this.joy.id = e.pointerId;
-      this.joy.ox = e.clientX; this.joy.oy = e.clientY; this.joy.dx = 0; this.joy.dy = 0;
+    const isPlayable = () => this.state === 'playing' || this.state === 'dying';
+    const canUseMouseJoystick = () => window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 820;
+    const canStartJoystick = e =>
+      e.pointerType !== 'mouse' || canUseMouseJoystick();
+    const startJoystick = (id, x, y) => {
+      this.joy.active = true; this.joy.id = id;
+      this.joy.ox = x; this.joy.oy = y; this.joy.dx = 0; this.joy.dy = 0;
       jdom.classList.remove('hidden');
-      jbase.style.left = e.clientX + 'px'; jbase.style.top = e.clientY + 'px';
+      jbase.style.left = x + 'px'; jbase.style.top = y + 'px';
       jknob.style.transform = 'translate(-50%,-50%)';
-    });
-    window.addEventListener('pointermove', e => {
-      if (!this.joy.active || e.pointerId !== this.joy.id) return;
-      let dx = e.clientX - this.joy.ox, dy = e.clientY - this.joy.oy;
+    };
+    const moveJoystick = (x, y) => {
+      let dx = x - this.joy.ox, dy = y - this.joy.oy;
       const d = Math.hypot(dx, dy), m = 46;
       if (d > m) { dx = dx / d * m; dy = dy / d * m; }
       this.joy.dx = dx / m; this.joy.dy = dy / m;
       jknob.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
-    });
-    const jend = e => {
-      if (!this.joy.active || e.pointerId !== this.joy.id) return;
+    };
+    const endJoystick = id => {
+      if (!this.joy.active || this.joy.id !== id) return;
       this.joy.active = false; this.joy.dx = 0; this.joy.dy = 0;
       jdom.classList.add('hidden');
     };
-    window.addEventListener('pointerup', jend);
-    window.addEventListener('pointercancel', jend);
+
+    this.canvas.addEventListener('pointerdown', e => {
+      if (e.isPrimary === false || !canStartJoystick(e) || this.joy.active || !isPlayable()) return;
+      e.preventDefault();
+      try { this.canvas.setPointerCapture(e.pointerId); }
+      catch (err) { /* Best-effort: window listeners still keep the drag alive. */ }
+      startJoystick(e.pointerId, e.clientX, e.clientY);
+    }, { passive: false });
+    window.addEventListener('pointermove', e => {
+      if (!this.joy.active || e.pointerId !== this.joy.id) return;
+      e.preventDefault();
+      moveJoystick(e.clientX, e.clientY);
+    }, { passive: false });
+    const endPointerJoystick = e => {
+      if (!this.joy.active || e.pointerId !== this.joy.id) return;
+      e.preventDefault();
+      try { this.canvas.releasePointerCapture(e.pointerId); }
+      catch (err) { /* Pointer may already be released by the browser. */ }
+      endJoystick(e.pointerId);
+    };
+    window.addEventListener('pointerup', endPointerJoystick, { passive: false });
+    window.addEventListener('pointercancel', endPointerJoystick, { passive: false });
+
+    this.canvas.addEventListener('mousedown', e => {
+      if (!canUseMouseJoystick() || this.joy.active || !isPlayable() || e.button !== 0) return;
+      e.preventDefault();
+      startJoystick('mouse', e.clientX, e.clientY);
+    }, { passive: false });
+    window.addEventListener('mousemove', e => {
+      if (!this.joy.active || this.joy.id !== 'mouse') return;
+      e.preventDefault();
+      moveJoystick(e.clientX, e.clientY);
+    }, { passive: false });
+    window.addEventListener('mouseup', e => {
+      if (!this.joy.active || this.joy.id !== 'mouse') return;
+      e.preventDefault();
+      endJoystick('mouse');
+    }, { passive: false });
+
+    const touchJoyId = touch => 'touch:' + touch.identifier;
+    const activeTouch = touches => Array.from(touches).find(touch => touchJoyId(touch) === this.joy.id);
+    this.canvas.addEventListener('touchstart', e => {
+      if (this.joy.active || !isPlayable() || !e.changedTouches.length) return;
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      startJoystick(touchJoyId(touch), touch.clientX, touch.clientY);
+    }, { passive: false });
+    window.addEventListener('touchmove', e => {
+      if (!this.joy.active || !String(this.joy.id).startsWith('touch:')) return;
+      const touch = activeTouch(e.changedTouches);
+      if (!touch) return;
+      e.preventDefault();
+      moveJoystick(touch.clientX, touch.clientY);
+    }, { passive: false });
+    const endTouchJoystick = e => {
+      if (!this.joy.active || !String(this.joy.id).startsWith('touch:')) return;
+      if (!activeTouch(e.changedTouches)) return;
+      e.preventDefault();
+      endJoystick(this.joy.id);
+    };
+    window.addEventListener('touchend', endTouchJoystick, { passive: false });
+    window.addEventListener('touchcancel', endTouchJoystick, { passive: false });
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state === 'playing') this.pause();
